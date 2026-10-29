@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
+
 const exercises = [
   { id: 'squat', name: 'Barbell squat', group: 'Legs', equipment: 'Barbell', sets: 4, reps: 8, weight: 60 },
   { id: 'bench', name: 'Bench press', group: 'Chest', equipment: 'Barbell', sets: 3, reps: 10, weight: 40 },
@@ -17,7 +18,7 @@ function createApp(dataFile = path.join(__dirname, '../data/training.json')) {
     post: (url, handler) => routes.set('POST ' + url, handler),
     put: (url, handler) => routes.set('PUT ' + url, handler),
     delete: (url, handler) => routes.set('DELETE ' + url, handler),
-    handle: async (req, res) => {
+    listen: (...args) => http.createServer(async (req, res) => {
       res.status = code => { res.statusCode = code; return res; };
       res.json = data => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(data)); };
       const fail = error => { if (!error.status) console.error(error); res.status(error.status || 500).json({ error: error.status ? error.message : 'Unable to save training data.' }); };
@@ -48,8 +49,7 @@ function createApp(dataFile = path.join(__dirname, '../data/training.json')) {
           res.setHeader('Content-Type', mime[path.extname(file)] || 'application/octet-stream'); res.end(body);
         } catch (error) { if (error.code === 'ENOENT' || error.code === 'EISDIR') return res.status(404).json({ error: 'File not found. Run npm run build first.' }); throw error; }
       } catch (error) { fail(error); }
-    },
-    listen: (...args) => http.createServer(app.handle).listen(...args)
+    }).listen(...args)
   };
   let queue = Promise.resolve();
   async function read() {
@@ -70,7 +70,7 @@ function createApp(dataFile = path.join(__dirname, '../data/training.json')) {
   function problem(message, status = 400) { const error = new Error(message); error.status = status; throw error; }
   function buildPlan(body) {
     const { name, focus } = body;
-    const targets = body.exercises || (Array.isArray(body.exerciseIds) ? [...new Set(body.exerciseIds)].map(id => ({ id })) : null);
+    const targets = body.exercises || body.exerciseIds?.map(id => ({ id }));
     if (typeof name !== 'string' || !name.trim() || name.length > 80 || !['Strength', 'Hypertrophy', 'Conditioning'].includes(focus) || !Array.isArray(targets) || !targets.length || targets.length > 20) problem('Provide a name, focus, and 1–20 exercises.');
     const selected = targets.map(target => {
       const base = exercises.find(e => e.id === target?.id);
@@ -101,7 +101,7 @@ function createApp(dataFile = path.join(__dirname, '../data/training.json')) {
     const { planId, completedSets, duration, entries, requestId } = req.body;
     if (!Array.isArray(completedSets) || !completedSets.length || !Number.isFinite(duration) || duration < 0 || duration > 86400 || new Set(completedSets).size !== completedSets.length) return res.status(400).json({ error: 'Complete at least one set and provide a valid duration.' });
     try {
-      if (entries !== undefined && (!Array.isArray(entries) || entries.length > 400 || entries.some(e => !e || typeof e.id !== 'string') || new Set(entries.map(e => e.id)).size !== entries.length)) problem('Invalid set entries.');
+      if (entries !== undefined && (!Array.isArray(entries) || entries.length > 400)) problem('Invalid set entries.');
       const session = await mutate(data => {
         if (requestId && (typeof requestId !== 'string' || requestId.length > 80)) problem('Invalid request ID.');
         if (requestId && data.sessions.some(item => item.requestId === requestId)) return data.sessions.find(item => item.requestId === requestId);
@@ -110,8 +110,7 @@ function createApp(dataFile = path.join(__dirname, '../data/training.json')) {
         if (!plan || completedSets.some(id => !valid.includes(id))) { const e = new Error('Invalid workout or set.'); e.status = 400; throw e; }
         const logged = completedSets.map(id => {
           const exercise = plan.exercises.find(e => id.startsWith(e.id + '-'));
-          const entry = entries === undefined ? { reps: exercise.reps, weight: exercise.weight } : entries.find(e => e.id === id);
-          if (!entry) problem('Provide values for each completed set.');
+          const entry = entries?.find(e => e.id === id) || { reps: exercise.reps, weight: exercise.weight };
           if (!Number.isInteger(entry.reps) || entry.reps < 1 || entry.reps > 600 || !Number.isFinite(entry.weight) || entry.weight < 0 || entry.weight > 1000) problem('Invalid reps or weight.');
           return { id, exercise: exercise.name, reps: entry.reps, weight: entry.weight, unit: exercise.id === 'plank' ? 'seconds' : 'reps' };
         });
