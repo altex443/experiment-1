@@ -1,0 +1,32 @@
+{
+  "name": "forma-training",
+  "version": "1.0.0",
+  "description": "Qwik gym trainer with a Node.js API",
+  "repository": {
+    "type": "git",
+    "url": "exp1"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently -k \"node --watch index.js\" \"vite --host 127.0.0.1\"",
+    "build": "tsc --noEmit && vite build",
+    "build:watch": "concurrently -k \"tsc --noEmit --watch --preserveWatchOutput\" \"vite build --watch\"",
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@builder.io/qwik": "^1.17.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.0",
+    "typescript": "^5.8.3",
+    "@types/node": "^22.15.0",
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
