@@ -22,6 +22,25 @@ npm start       # Serve the built app and API at http://localhost:3001
 npm test        # Run Node API integration tests; no dependencies required
 ```
 
+## Server configuration
+
+Pass options through the start script after `--`:
+
+```sh
+npm start -- --host 0.0.0.0 --port 8080 --data-file /var/data/training.json
+npm start -- --help
+```
+
+Equivalent environment configuration:
+
+```sh
+HOST=0.0.0.0 PORT=8080 DATA_FILE=/var/data/training.json npm start
+```
+
+Options override environment variables. Defaults are `127.0.0.1`, port `3001`, and the project’s `data/training.json`. Relative data paths resolve from the working directory. Parent directories are created on first save.
+
+For Render, use build command `npm ci --include=dev && npm run build` and start command `npm start -- --host 0.0.0.0 --data-file /var/data/training.json`. Leave `--port` unset so Render’s `PORT` is used. Mount a persistent disk at `/var/data` to preserve training records.
+
 ## Features
 
 - Overview with weekly workouts, training volume, and completed sessions.
@@ -44,7 +63,7 @@ npm test        # Run Node API integration tests; no dependencies required
 
 The API exposes `GET /api/state`, `POST /api/plans`, `PUT /api/plans/:id`, `DELETE /api/plans/:id`, `POST /api/sessions`, `DELETE /api/sessions/:id`, and `PUT /api/settings`. Session saves accept an optional `requestId` for safe retries. Writes are serialized and use atomic file replacement. Set `PORT` to change the API/production port; update the Vite proxy if changing it during development.
 
-This is a single-user local application with no authentication. The server binds to loopback. Add authentication and a database before deploying for multiple users. Exercise defaults can be edited in plans and during sessions. Volume uses actual logged reps and weights; timed holds do not contribute to volume. Historical sessions retain their logged values when a plan changes or is deleted. Fonts use Google Fonts with local fallbacks.
+This is a single-user local application with no authentication. The server binds to loopback by default; use `--host 0.0.0.0` for hosting. Add authentication and a database before deploying for multiple users. Exercise defaults can be edited in plans and during sessions. Volume uses actual logged reps and weights; timed holds do not contribute to volume. Historical sessions retain their logged values when a plan changes or is deleted. Fonts use Google Fonts with local fallbacks.
 
 ## Validation
 
