@@ -22,12 +22,13 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci --include=dev
+      - run: npm install --include=dev
       - run: npm test
       - uses: actions/configure-pages@v5
         id: pages
       - run: npm run build
         env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
       - uses: actions/upload-pages-artifact@v4
         with:

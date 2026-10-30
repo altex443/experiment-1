@@ -1,4 +1,3 @@
-const path = require('node:path');
 const { parseArgs } = require('node:util');
 
 function readConfig(args = process.argv.slice(2), env = process.env) {
@@ -7,7 +6,6 @@ function readConfig(args = process.argv.slice(2), env = process.env) {
     options: {
       host: { type: 'string' },
       port: { type: 'string' },
-      'data-file': { type: 'string' },
       help: { type: 'boolean', short: 'h' }
     }
   });
@@ -19,9 +17,7 @@ function readConfig(args = process.argv.slice(2), env = process.env) {
   }
   const host = values.host ?? env.HOST ?? '127.0.0.1';
   if (!host.trim()) throw new Error('Host cannot be empty.');
-  const dataFile = values['data-file'] ?? env.DATA_FILE ?? path.join(__dirname, '../data/training.json');
-  if (!dataFile.trim()) throw new Error('Data file cannot be empty.');
-  return { host, port, dataFile: path.resolve(dataFile) };
+  return { host, port };
 }
 
 module.exports = { readConfig };
