@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const { mongoOptions, connectionDiagnosis } = require('./server/mongo-connection');
 const { readConfig } = require('./server/config');
 const { createAuth } = require('./server/auth');
 const { createApp } = require('./server/app');
@@ -16,7 +17,7 @@ async function main() {
   const sessionSecret = process.env.SESSION_SECRET || process.env.API_TOKEN;
   if (!sessionSecret || sessionSecret.length < 32) { logger.error('config.session_secret.missing_or_short'); process.exitCode = 1; return; }
   const { MongoClient } = require('mongodb');
-  const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+  const client = new MongoClient(process.env.MONGODB_URI, mongoOptions());
   let server;
   const started = performance.now();
   let phase = 'connect';
@@ -34,7 +35,7 @@ async function main() {
     server = createApp(store, { auth, allowedOrigins, logger }).listen(config.port, config.host, () => logger.info('server.listening', { host: config.host, port: config.port }));
     server.on('error', async error => { logger.error('server.listen.failed', errorDetails(error)); await client.close(); process.exitCode = 1; });
   } catch (error) {
-    logger.error('mongo.initialize.failed', { phase, durationMs: Math.round(performance.now() - started), ...errorDetails(error) });
+    logger.error('mongo.initialize.failed', { phase, durationMs: Math.round(performance.now() - started), ...errorDetails(error), ...connectionDiagnosis(error) });
     await client.close(); process.exitCode = 1; return;
   }
   let stopping = false;

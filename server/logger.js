@@ -16,7 +16,7 @@ function createLogger({ level = process.env.LOG_LEVEL || 'info', write = line =>
       if (levels[severity] < levels[level]) return;
       // Only operational metadata may be emitted, never bodies, headers, URIs, or tokens.
       const safe = {};
-      for (const key of ['requestId', 'method', 'route', 'status', 'durationMs', 'attempt', 'host', 'port', 'signal', 'errorType', 'errorCode', 'phase', 'created']) {
+      for (const key of ['requestId', 'method', 'route', 'status', 'durationMs', 'attempt', 'host', 'port', 'signal', 'errorType', 'errorCode', 'phase', 'created', 'cause', 'hint']) {
         if (['string', 'number', 'boolean'].includes(typeof fields[key])) safe[key] = fields[key];
       }
       write(JSON.stringify({ time: new Date().toISOString(), level: severity, event, ...safe }));

@@ -1,0 +1,1 @@
+export function createDeviceStore(storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>, base?: string): { request(url: string, options?: { method?: string; body?: string }): Promise<{ ok: boolean; json(): Promise<any> }> };

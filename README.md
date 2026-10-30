@@ -1,49 +1,65 @@
 # Rep
 
-A phone-friendly Qwik workout tracker with username/password registration, cookie-based login, and MongoDB storage. Each user has private workouts, exercises, history, goals, backups, and unfinished workouts. No external sign-in provider is required.
+A minimal, phone-friendly workout tracker with a GitHub Pages frontend, a Node.js API, and MongoDB sync. Registration, login, workouts, exercises, weight history, and progress stay available across devices through your account.
+
+## Deploy GitHub Pages with MongoDB sync
+
+The checked-in Pages workflow builds **server-connected mode**, not browser-only mode. GitHub hosts the frontend; a separately hosted Node API connects to MongoDB and handles authentication. Database credentials never go to GitHub Pages.
+
+1. Deploy the Node API from this repository to a Node host. Build command: `npm ci --include=dev && npm run build`. Start command: `npm start -- --host 0.0.0.0`.
+2. Set private values on that host: `MONGODB_URI`, `MONGODB_DB=rep`, and `SESSION_SECRET` (a random secret of at least 32 characters). Allow the backend host’s network access in MongoDB.
+3. For your Pages frontend, set backend `ALLOWED_ORIGINS=https://alextiron.github.io`, `COOKIE_SECURE=true`, and `COOKIE_SAME_SITE=None`. Do not include the repository path in the origin.
+4. In GitHub **Settings → Secrets and variables → Actions → Variables**, create the public repository variable `VITE_API_URL` containing your backend origin, e.g. `https://your-api.onrender.com`. No `/api` suffix, credentials, query string, or trailing path.
+5. Set **Settings → Pages → Source** to **GitHub Actions**. Push this project to `main`, or run **Actions → Deploy GitHub Pages → Run workflow**.
+6. Open `https://alextiron.github.io/experiment-1/`, register or sign in, and your data is read from/written to MongoDB.
+
+The workflow runs tests and `npm run build:pages:sync`, sets the repository asset path, and injects only the public backend URL. A missing/invalid API URL fails the build with setup instructions; it never silently switches to browser storage. Keep `.env` ignored and do not upload it.
+
+Cross-site cookies can be blocked by some browsers, especially on phones. Use same-site custom domains for the Pages frontend and API, or the app served directly by the backend, if your browser blocks them. If using the backend’s app URL, include that origin in `ALLOWED_ORIGINS` too.
 
 ## Run locally
 
-Requires Node 22 and a reachable MongoDB instance.
+Requires Node 22 and MongoDB for synced mode. Preserve your existing `.env`; new setups can copy `.env.example` and set `MONGODB_URI` and `SESSION_SECRET`.
 
 ```sh
 nvm use
-npm install
-# For a NEW setup only; preserve your existing .env:
-cp .env.example .env
-```
-
-Configure server-only values in the ignored `.env`:
-
-```text
-MONGODB_URI=your-private-mongodb-connection-string
-MONGODB_DB=rep
-SESSION_SECRET=a-random-secret-at-least-32-characters
-COOKIE_SECURE=false
-COOKIE_SAME_SITE=Lax
-```
-
-Generate `SESSION_SECRET` with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Existing values need not change. Old provider settings and `APP_USERNAME`/`APP_PASSWORD` are no longer used: create accounts through the registration page instead.
-
-```sh
+npm ci
 npm run dev         # API + frontend at http://localhost:5173
-npm run build       # Type-check and build frontend
-npm start           # Built frontend + API at http://localhost:3001
-npm start -- --host 0.0.0.0 --port 8080
-npm run dev:client  # Frontend only; requires a running backend
-npm run preview    # Static preview; requires a configured API URL
+npm run build       # Build the client for the Node host
+npm start           # API + built frontend at http://localhost:3001
 npm test
 ```
 
-Select **New here? Create an account**, choose a username and password, and confirm the password. Registration signs you in automatically. Usernames are case-insensitive, 3–32 characters, and allow letters, digits, dots, underscores, and hyphens; the first character must be a letter or digit. Passwords must contain 12–128 characters. Use a password manager: password recovery is not yet implemented.
+To verify a connected Pages build locally (use your actual public backend URL):
 
-Returning users select **Sign in**. The HttpOnly cookie remembers the session for 30 days. Settings shows the signed-in account and provides **Sign out**.
+```sh
+VITE_API_URL=https://your-api.onrender.com BASE_PATH=/experiment-1/ npm run build:pages:sync
+npm run preview
+# Open http://localhost:4173/experiment-1/
+# For authenticated preview, also allow that origin on the backend.
+```
+
+Create an account through **New here? Create an account**. Passwords require 12–128 characters; usernames are case-insensitive and 3–32 characters. Cookie sessions last 30 days. Server-connected mode does not save training data to local storage as a fallback.
+
+Saved changes reach MongoDB immediately. The app also refreshes data when you return to its tab and every 60 seconds while visible and idle. Automatic refresh pauses during workouts and form editing so it cannot overwrite ongoing input. Unfinished workouts are recovered at login/reload, rather than replaced underneath an active session.
+
+## Optional standalone browser mode
+
+Standalone mode remains an explicit alternative with no login, MongoDB, or cross-device sync:
+
+```sh
+npm run dev:pages
+npm run build:pages
+npm run preview
+```
+
+For a project path use `BASE_PATH=/experiment-1/ npm run build:pages`. This mode stores data only in the current browser and clearly labels it on-device mode. It ignores the API URL. To deploy this alternative, change the workflow build step to `npm run build:pages` deliberately. The default checked-in workflow uses MongoDB sync.
 
 ## Body-weight tracking
 
 Open **Progress → Body weight** to record a measurement in kilograms with a date. Saving another value for the same date updates that day’s entry. The summary shows your latest measurement and the change since your first recorded date. Use **Edit** or **Delete** in the history to correct entries.
 
-Measurements are private to your account, persist in MongoDB, and are included in exported JSON backups. Older accounts without body-weight history remain supported. Body weight does not change the calculation of exercise training volume.
+Measurements persist privately in MongoDB in the default Pages sync mode, or in the browser in explicit standalone mode, and are included in exported JSON backups. Older accounts without body-weight history remain supported. Body weight does not change the calculation of exercise training volume.
 
 ## Exercise muscle maps
 
@@ -53,7 +69,7 @@ The exercise library includes front/back SVG muscle diagrams for every exercise.
 
 Every built-in exercise includes a short YouTube form tutorial. Use **Watch proper form** in the exercise library, workout editor, or active workout. The embedded player loads only after you request it, uses YouTube’s privacy-enhanced domain, and never autoplays. **Open on YouTube** is available if embedding or playback is blocked. Videos are linked/embedded from their original creators, not downloaded or rehosted.
 
-Custom exercises accept an optional YouTube link during creation. **Add or change video** on any exercise card lets you attach a video to an existing custom exercise, replace a built-in demonstration, or remove a link. Changes persist privately in your MongoDB workspace, apply when training, and are included in exported data. Only validated HTTPS YouTube links are accepted; arbitrary embed HTML and third-party iframe URLs are rejected.
+Custom exercises accept an optional YouTube link during creation. **Add or change video** on any exercise card lets you attach a video to an existing custom exercise, replace a built-in demonstration, or remove a link. Changes persist in the current storage mode, apply when training, and are included in exported data. Only validated HTTPS YouTube links are accepted; arbitrary embed HTML and third-party iframe URLs are rejected.
 
 Default sources:
 
@@ -78,9 +94,9 @@ These are general demonstrations; select movements and loads suited to your abil
 
 Active workouts, exercise library context, and saved session details also display relevant body-weight information. Editing or deleting a weight reading updates related analytics; no historical weight is guessed. Timed holds are excluded from lifting volume and weighted performance comparisons. Body weight is never automatically added to exercise load. No one-rep maximum or health outcome is estimated.
 
-All analytics derive from the signed-in account’s MongoDB data. New measurements, sessions, edits, deletions, and browser-data migrations update the calculations automatically.
+All analytics derive from the active workspace: the signed-in account’s MongoDB data in connected mode, or browser storage in explicit standalone mode. New measurements, sessions, edits, deletions, and browser-data migrations update the calculations automatically.
 
-## Hosting and configuration
+## Server-mode hosting and configuration
 
 For reliable login on phones, serve the frontend and API together on your Node host over HTTPS. Build with `npm ci --include=dev && npm run build`; start with `npm start -- --host 0.0.0.0`.
 
@@ -95,19 +111,7 @@ For reliable login on phones, serve the frontend and API together on your Node h
 
 `.env` and `.env.*` are ignored; `.env.example` contains placeholders only. Do not put credentials or session secrets into source files, `VITE_*`, GitHub workflow YAML, or public build variables.
 
-### GitHub Pages frontend
-
-Pages still requires a separately hosted Node API:
-
-1. Set MongoDB credentials and session secret on the backend host.
-2. Set backend `ALLOWED_ORIGINS=https://YOUR_USERNAME.github.io`, `COOKIE_SECURE=true`, and `COOKIE_SAME_SITE=None`.
-3. Set GitHub Actions repository variable `VITE_API_URL=https://YOUR_BACKEND`.
-4. Select **Settings → Pages → Source → GitHub Actions** and push to `main` or run **Deploy GitHub Pages**.
-5. Open the site and create an account.
-
-Some browsers block cross-site cookies despite these settings. Use the app served by the backend directly, or same-site custom domains, for those browsers.
-
-## Authentication and data isolation
+## Server-mode authentication and data isolation
 
 MongoDB’s `users` collection stores salted scrypt password hashes, never plaintext passwords. A unique index enforces normalized usernames for local accounts, including concurrent registrations. Login errors are generic. Registration/login attempts are limited per connection address per server process, and concurrent password hashing is bounded.
 
@@ -119,10 +123,22 @@ Old shared workspaces and old provider identities are preserved without being as
 
 ## Backups and logs
 
-Settings supports backup export and explicit migration of old browser data. Uploading or restoring backup files is not supported. Browser migration replaces only the signed-in user’s workspace after confirmation; export a backup first when useful server data already exists. The backup API is export-only.
+Settings supports backup export in both modes. Server mode also supports explicit migration of old browser data. Uploading or restoring backup files is not supported. Browser migration replaces only the signed-in user’s workspace after confirmation; export a backup first when useful server data already exists. The backup API is export-only.
 
 JSON server logs include startup/database phases, request IDs, normalized routes, response status/timing, registration/login outcomes, conflicts, and shutdown. They exclude usernames, passwords, cookies, connection strings, bodies, query strings, and raw driver messages.
 
 ## Validation
 
-`npm test` covers account registration/login, validation, duplicate and concurrent registrations, salted hashing, session persistence/expiry/revocation, secret rotation, rate limits, CORS, server-derived data ownership, user isolation, training operations, backups, and log redaction. `npm run build` checks TypeScript and bundles the client. Tests simulate MongoDB; live database and browser behavior require target-environment verification.
+`npm test` covers standalone browser persistence and draft recovery, disabled storage, repository isolation, and account registration/login, validation, duplicate and concurrent registrations, salted hashing, session persistence/expiry/revocation, secret rotation, rate limits, CORS, server-derived data ownership, user isolation, training operations, backups, and log redaction. `npm run build` checks TypeScript and bundles the client. Tests simulate MongoDB; live database and browser behavior require target-environment verification.
+
+## Troubleshooting MongoDB connections
+
+Run `nvm use`, then `npm run db:check` in your normal terminal. The command reads the ignored `.env`, connects and pings MongoDB, and prints a credential-safe diagnosis. Startup logs include the same hints. It does not change database contents.
+
+- `dns_srv`: your DNS resolver cannot resolve Atlas SRV/TXT records. Check VPN, firewall, and DNS settings. Alternatively copy Atlas’s standard `mongodb://` connection string from its Connect dialog; do not invent shard hostnames or remove TLS options.
+- `server_selection`: ensure your cluster is running and add your computer’s current public IP in Atlas **Network Access → IP Access List**. Your network must allow MongoDB traffic, normally TCP 27017.
+- `connection_refused`: verify the URI/port and firewall. If the nested failure is IPv6-specific, set `MONGODB_IP_FAMILY=4` in `.env`. This does not fix SRV lookup failures.
+- `authentication`: use the Atlas database user credentials, not the Atlas website login; percent-encode special characters in the URI password.
+- `tls`: check system time, trusted certificates, and VPN/TLS inspection. Do not disable certificate validation.
+
+Diagnostics report only recognized error fields and fixed hints; raw driver errors and connection strings remain hidden. The database user needs read/write access to create accounts, indexes, sessions, and workspaces.

@@ -17,7 +17,11 @@
     "start": "node index.js",
     "test": "node --test",
     "preview": "vite preview --host 127.0.0.1",
-    "dev:client": "vite --host 127.0.0.1"
+    "dev:client": "vite --host 127.0.0.1",
+    "build:pages": "node scripts/pages.mjs",
+    "dev:pages": "node scripts/pages.mjs --dev",
+    "build:pages:sync": "node scripts/pages.mjs --server",
+    "db:check": "node scripts/check-mongo.js"
   },
   "dependencies": {
     "@builder.io/qwik": "^1.17.0",
