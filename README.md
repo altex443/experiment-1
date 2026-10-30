@@ -1,70 +1,62 @@
 # Forma
 
-A responsive gym training app with a **Qwik + TypeScript client** and a **Node.js HTTP server**. “Quick” is interpreted as Qwik.
+A Qwik gym trainer that runs entirely on GitHub Pages. Workouts, session history, and weekly goals are saved in your browser’s local storage. No backend, account, database, or paid hosting is required.
 
 ## Run locally
 
-Requires Node.js 22 or newer.
+Requires Node.js 22 or newer for development and builds.
 
 ```sh
 nvm install
 nvm use
-npm install
+npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Vite proxies `/api` to the Node server on port 3001.
+Open http://localhost:5173. Only the client runs; there is no API server to start.
 
 ```sh
-npm run build   # Type-check and build the client
-npm run build:watch # Watch TypeScript and rebuild the client into dist/ on changes
-npm start       # Serve the built app and API at http://localhost:3001
-npm test        # Run Node API integration tests; no dependencies required
+npm test            # Storage lifecycle, validation, backup, and legacy config tests
+npm run build       # Type-check and build static files into dist/
+npm start           # Preview dist/ at http://localhost:4173
+npm run build:watch # Rebuild dist/ on changes; run npm start separately to preview
 ```
 
-## Server configuration
+## Deploy free on GitHub Pages
 
-Pass options through the start script after `--`:
+1. Create a **public** GitHub repository and push this project, including `package-lock.json` and `.github/workflows/deploy-pages.yml`, to its `main` branch.
+2. In the repository, open **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions**.
+3. Open **Actions → Deploy GitHub Pages → Run workflow**, choose `main`, and run it. Subsequent pushes to `main` deploy automatically.
+4. When the workflow succeeds, open the URL shown in its deployment or **Settings → Pages**. For a project repository, this is usually `https://YOUR_USERNAME.github.io/YOUR_REPOSITORY/`.
+
+The workflow tests and builds the app, derives the URL base path from Pages configuration, uploads `dist/`, and deploys it. There is no manual build upload, Render setup, server start command, or secret to configure. If your default branch differs from `main`, update the workflow’s branch filter.
+
+For a local build that simulates a project subdirectory:
 
 ```sh
-npm start -- --host 0.0.0.0 --port 8080 --data-file /var/data/training.json
-npm start -- --help
+BASE_PATH=/forma/ npm run build
+npm start -- --host 127.0.0.1
+# Open http://localhost:4173/forma/
 ```
 
-Equivalent environment configuration:
+## Data and backups
 
-```sh
-HOST=0.0.0.0 PORT=8080 DATA_FILE=/var/data/training.json npm start
-```
+Each visitor has their own workouts and history. Data persists across reloads and deployments at the same URL, but clearing site data or using another browser/device does not preserve it. Private browsing may discard data when closed. Different project paths have separate storage keys.
 
-Options override environment variables. Defaults are `127.0.0.1`, port `3001`, and the project’s `data/training.json`. Relative data paths resolve from the working directory. Parent directories are created on first save.
+Open the profile/settings button, or **Progress → Change weekly goal**, to **Export backup** or **Restore backup**. Restore replaces the current browser’s training data after confirmation. Backups are JSON files. Existing Node server data is not uploaded to Pages; you can restore a copy of `data/training.json` through this interface.
 
-For Render, use build command `npm ci --include=dev && npm run build` and start command `npm start -- --host 0.0.0.0 --data-file /var/data/training.json`. Leave `--port` unset so Render’s `PORT` is used. Mount a persistent disk at `/var/data` to preserve training records.
+## Features and structure
 
-## Features
-
-- Overview with weekly workouts, training volume, and completed sessions.
-- Create, edit, and delete workout plans, including custom sets, reps/seconds, and weights.
-- Searchable exercise library with muscle-group filters.
-- Active workout with editable per-set reps and weights, elapsed time, and partial-session completion.
-- Unfinished workouts automatically recover from browser storage after reload.
-- Session details, deletion, and retry protection to prevent duplicate logs.
-- Editable weekly training goal and a daily activity chart.
-- Persistent session history and computed training volume.
-- Responsive layouts, labeled controls, and loading/error/empty states.
-
-## Organization
-
-- `src/`: Qwik client and responsive styles.
-- `server/app.js`: dependency-free Node API, validation, and static serving.
-- `index.js`: server entry point.
-- `test/`: integration tests using Node's built-in test runner.
-- `data/training.json`: runtime data, created on first save and ignored by Git.
-
-The API exposes `GET /api/state`, `POST /api/plans`, `PUT /api/plans/:id`, `DELETE /api/plans/:id`, `POST /api/sessions`, `DELETE /api/sessions/:id`, and `PUT /api/settings`. Session saves accept an optional `requestId` for safe retries. Writes are serialized and use atomic file replacement. Set `PORT` to change the API/production port; update the Vite proxy if changing it during development.
-
-This is a single-user local application with no authentication. The server binds to loopback by default; use `--host 0.0.0.0` for hosting. Add authentication and a database before deploying for multiple users. Exercise defaults can be edited in plans and during sessions. Volume uses actual logged reps and weights; timed holds do not contribute to volume. Historical sessions retain their logged values when a plan changes or is deleted. Fonts use Google Fonts with local fallbacks.
+- Create, edit, and delete workout plans with custom sets, reps/seconds, and weights.
+- Search and filter exercises; track actual set performance and elapsed workout time.
+- Recover unfinished workouts after reload; save partial sessions without duplicate retry logs.
+- View session details, delete sessions, and track weekly progress against a configurable goal.
+- Export/restore validated backups and report unavailable/full browser storage.
+- `src/app.tsx`: Qwik interface; `src/local-store.mjs`: browser persistence and validation.
+- `src/training.ts`: browser storage integration and project-specific draft keys.
+- `.github/workflows/deploy-pages.yml`: build and deployment workflow.
+- `server/` and `index.js`: retained legacy Node implementation, unused by the Pages app and current npm startup scripts.
 
 ## Validation
 
-`npm run build` checks TypeScript and creates the production client. `npm test` exercises the real HTTP request handler with temporary storage, without opening a network port. Tests cover validation failures, plan lifecycle, custom logged volume, retry deduplication, settings, and durable history.
+`npm test` covers persistence across store recreation, plan/session lifecycle, actual training volume, retry deduplication, invalid operations, backup restore, per-project isolation, and storage errors. `npm run build` checks TypeScript and bundles the static client. Browser interaction and live Pages deployment must be verified in the target environment.

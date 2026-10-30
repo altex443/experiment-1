@@ -1,7 +1,7 @@
 {
   "name": "forma-training",
   "version": "1.0.0",
-  "description": "Qwik gym trainer with a Node.js API",
+  "description": "Browser-local Qwik gym trainer for GitHub Pages",
   "repository": {
     "type": "git",
     "url": "exp1"
@@ -11,11 +11,12 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -k \"node --watch index.js\" \"vite --host 127.0.0.1\"",
+    "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "build:watch": "concurrently -k \"tsc --noEmit --watch --preserveWatchOutput\" \"vite build --watch\"",
-    "start": "node index.js",
-    "test": "node --test"
+    "start": "vite preview --host 127.0.0.1",
+    "test": "node --test",
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
     "@builder.io/qwik": "^1.17.0"
