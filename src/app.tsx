@@ -21,7 +21,7 @@ export const App = component$(() => {
     window.addEventListener('rep:auth-required', authRequired);
     cleanup(() => window.removeEventListener('rep:auth-required', authRequired));
     trainingRequest('/api/auth/session').then(async response => {
-      if (!response.ok) { s.login = !isLocalMode; s.error = isLocalMode ? 'Unable to access browser storage.' : s.error; s.loading = false; return; }
+      if (!response.ok) { s.login = !isLocalMode; const data = await response.json(); s.error = data.error || (isLocalMode ? 'Unable to access browser storage.' : 'Unable to connect to the backend.'); s.loading = false; return; }
       const session = await response.json(); s.accountName = session.user?.name || ''; s.accountEmail = session.user?.username || '';
       if (!await refresh()) return;
       const result = await trainingRequest('/api/draft');

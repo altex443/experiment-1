@@ -142,3 +142,11 @@ Run `nvm use`, then `npm run db:check` in your normal terminal. The command read
 - `tls`: check system time, trusted certificates, and VPN/TLS inspection. Do not disable certificate validation.
 
 Diagnostics report only recognized error fields and fixed hints; raw driver errors and connection strings remain hidden. The database user needs read/write access to create accounts, indexes, sessions, and workspaces.
+
+## Deploy the missing backend using the Render blueprint
+
+The repository includes `render.yaml` for a free Render Node web service. Push the file, sign in to Render, choose **New → Blueprint**, connect this GitHub repository, and enter `MONGODB_URI` privately when prompted. The blueprint generates a session secret and allows the frontend origin `https://altex443.github.io`; change that value if your frontend origin differs.
+
+Once the service is live, copy its HTTPS origin into the GitHub Actions repository variable `VITE_API_URL` and rerun **Deploy GitHub Pages**. Verify the backend at `https://YOUR_SERVICE.onrender.com/api/health`. Atlas must allow network access from the backend host.
+
+`/api/auth/login` must target that backend, never `github.io`. The Pages build rejects missing API origins and origins ending in `.github.io`. Changing the GitHub variable requires rebuilding and deploying; browser refresh alone does not change the compiled API URL.
